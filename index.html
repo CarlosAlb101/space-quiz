@@ -541,30 +541,50 @@
       const resultTitle = document.querySelector("#resultTitle");
       const resultSummary = document.querySelector("#resultSummary");
 
+      let gameQuestions = [];
       let current = 0;
       let score = 0;
       let answered = false;
 
+      function shuffle(items) {
+        const shuffled = [...items];
+        for (let index = shuffled.length - 1; index > 0; index -= 1) {
+          const randomIndex = Math.floor(Math.random() * (index + 1));
+          [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+        }
+        return shuffled;
+      }
+
+      function createGameQuestions() {
+        gameQuestions = shuffle(questions).map(item => ({
+          question: item.question,
+          answers: shuffle(item.answers.map((text, index) => ({
+            text,
+            correct: index === item.correct
+          })))
+        }));
+      }
+
       function renderQuestion() {
-        const item = questions[current];
+        const item = gameQuestions[current];
         answered = false;
-        questionCount.textContent = `Pregunta ${current + 1} de ${questions.length}`;
-        progressBar.style.width = `${((current + 1) / questions.length) * 100}%`;
+        questionCount.textContent = `Pregunta ${current + 1} de ${gameQuestions.length}`;
+        progressBar.style.width = `${((current + 1) / gameQuestions.length) * 100}%`;
         progressTrack.setAttribute("aria-valuenow", current + 1);
         question.textContent = item.question;
         feedback.textContent = "";
         feedback.className = "feedback";
         nextButton.disabled = true;
-        nextButton.innerHTML = current === questions.length - 1
+        nextButton.innerHTML = current === gameQuestions.length - 1
           ? 'Ver resultados <span aria-hidden="true">→</span>'
           : 'Siguiente pregunta <span aria-hidden="true">→</span>';
         answers.innerHTML = "";
 
-        item.answers.forEach((text, index) => {
+        item.answers.forEach((answer, index) => {
           const button = document.createElement("button");
           button.className = "answer";
           button.type = "button";
-          button.innerHTML = `<span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${text}</span>`;
+          button.innerHTML = `<span class="answer-letter">${String.fromCharCode(65 + index)}</span><span>${answer.text}</span>`;
           button.addEventListener("click", () => selectAnswer(button, index));
           answers.appendChild(button);
         });
@@ -573,11 +593,11 @@
       function selectAnswer(selected, index) {
         if (answered) return;
         answered = true;
-        const item = questions[current];
+        const item = gameQuestions[current];
         const allAnswers = [...answers.children];
         allAnswers.forEach(button => { button.disabled = true; });
 
-        if (index === item.correct) {
+        if (item.answers[index].correct) {
           selected.classList.add("correct", "pop");
           score += 1;
           scoreElement.textContent = score;
@@ -585,8 +605,9 @@
           feedback.classList.add("success");
         } else {
           selected.classList.add("incorrect", "shake");
-          allAnswers[item.correct].classList.add("correct");
-          feedback.textContent = `Casi. La respuesta era: ${item.answers[item.correct]}.`;
+          const correctIndex = item.answers.findIndex(answer => answer.correct);
+          allAnswers[correctIndex].classList.add("correct");
+          feedback.textContent = `Casi. La respuesta era: ${item.answers[correctIndex].text}.`;
           feedback.classList.add("error");
         }
         nextButton.disabled = false;
@@ -609,7 +630,7 @@
       }
 
       nextButton.addEventListener("click", () => {
-        if (current === questions.length - 1) {
+        if (current === gameQuestions.length - 1) {
           showResults();
         } else {
           current += 1;
@@ -618,6 +639,7 @@
       });
 
       restartButton.addEventListener("click", () => {
+        createGameQuestions();
         current = 0;
         score = 0;
         scoreElement.textContent = "0";
@@ -627,6 +649,7 @@
         renderQuestion();
       });
 
+      createGameQuestions();
       renderQuestion();
     })();
   </script>
